@@ -9,9 +9,9 @@ function App() {
       <main className="app-main">
         <LufsAnalyzer />
       </main>
-      <footer class="app-footer">
+      <footer className="app-footer">
         <p className="footer-text">
-          Made with 🍻 by Simone Fontana - sim.fontana@gmail.com
+          Made with 🍻 and <a href="https://vite.dev/" target="_blank">Vite</a> by Simone Fontana - sim.fontana@gmail.com
         </p>
       </footer>
     </div>
