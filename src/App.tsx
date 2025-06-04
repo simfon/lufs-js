@@ -4,8 +4,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>LUFS Audio Analyzer</h1>
-        <p>Professional loudness measurement for audio devices</p>
+        <h3>LUFS Audio Analyzer</h3>
       </header>
       <main className="app-main">
         <LufsAnalyzer />

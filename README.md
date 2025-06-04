@@ -80,8 +80,11 @@ LUFSJS/
 ### Prerequisites
 - Node.js (v18 or higher)
 - npm or yarn package manager
+- Docker (optional, for containerized deployment)
 
 ### Installation
+
+#### Option 1: Local Development
 
 1. Clone the repository:
 ```bash
@@ -95,7 +98,26 @@ npm install
 cd server && npm install
 ```
 
+#### Option 2: Docker Development
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd LUFSJS
+```
+
+2. Build and run with Docker Compose:
+```bash
+# For development
+docker-compose -f docker-compose.dev.yml up --build
+
+# For production
+docker-compose up --build
+```
+
 ### Development
+
+#### Local Development
 
 Run both frontend and backend development servers:
 
@@ -110,13 +132,83 @@ cd server && npm run dev
 Or use VS Code tasks:
 - **Ctrl+Shift+P** → "Tasks: Run Task" → "Start Full Development Environment"
 
+#### Docker Development
+
+For containerized development:
+
+```bash
+# Development with hot reload
+docker-compose -f docker-compose.dev.yml up --build
+
+# Access the application at http://localhost:5173 (frontend) and http://localhost:3001 (backend)
+```
+
 ### Building for Production
+
+#### Local Build
 
 ```bash
 npm run build
 ```
 
 The built files will be in the `dist` directory.
+
+#### Docker Production Build
+
+```bash
+# Build production image
+docker build -t lufs-measurement-app .
+
+# Run production container
+docker run -p 3001:3001 lufs-measurement-app
+
+# Or use Docker Compose
+docker-compose up --build
+```
+
+## Docker Deployment
+
+### Quick Start with Docker
+
+1. **Clone and build**:
+```bash
+git clone <repository-url>
+cd LUFSJS
+docker-compose up --build
+```
+
+2. **Access the application**: Open http://localhost:3001
+
+### Docker Commands
+
+```bash
+# Development environment
+docker-compose -f docker-compose.dev.yml up --build
+
+# Production environment
+docker-compose up --build
+
+# Build only
+docker build -t lufs-app .
+
+# Run with custom port
+docker run -p 8080:3001 lufs-app
+
+# View logs
+docker-compose logs -f
+
+# Stop containers
+docker-compose down
+```
+
+### Docker Configuration
+
+The application includes:
+- **Multi-stage build** for optimized production images
+- **Non-root user** for security
+- **Health checks** for container monitoring
+- **Resource limits** for controlled resource usage
+- **Alpine Linux** base for minimal image size
 
 ## Usage
 

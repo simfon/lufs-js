@@ -1,3 +1,11 @@
+#root {
+  width: 90vw;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
 .lufs-analyzer {
   display: flex;
   flex-direction: column;
@@ -14,6 +22,7 @@
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   backdrop-filter: blur(10px);
+
 }
 
 .mode-selector {
