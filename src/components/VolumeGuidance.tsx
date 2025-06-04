@@ -64,6 +64,10 @@ const VolumeGuidance: React.FC<VolumeGuidanceProps> = ({ currentLufs, targetLufs
       </div>
 
       <div className="guidance-content">
+        <div className="guidance-message">
+          <p className="message">{guidance.message}</p>
+          <p className="action">{guidance.action}</p>
+        </div>
         <div className="lufs-comparison">
           <div className="current-lufs">
             <span className="label">Current:</span>
@@ -81,7 +85,7 @@ const VolumeGuidance: React.FC<VolumeGuidanceProps> = ({ currentLufs, targetLufs
           </div>
         </div>
 
-        <div className="progress-bar">
+       {/*  <div className="progress-bar">
           <div className="progress-track">
             <div className="target-marker"></div>
             <div 
@@ -94,14 +98,9 @@ const VolumeGuidance: React.FC<VolumeGuidanceProps> = ({ currentLufs, targetLufs
             <span>Target</span>
             <span>Too Loud</span>
           </div>
-        </div>
+        </div> */}
 
-        <div className="guidance-message">
-          <p className="message">{guidance.message}</p>
-          <p className="action">{guidance.action}</p>
-        </div>
-
-        <div className="device-instructions">
+        {/* <div className="device-instructions">
           <h4>How to adjust on your device:</h4>
           <ul>
             <li><strong>Kemper:</strong> Use the Master Volume or Output settings</li>
@@ -109,7 +108,7 @@ const VolumeGuidance: React.FC<VolumeGuidanceProps> = ({ currentLufs, targetLufs
             <li><strong>Ampero:</strong> Use the Master Volume control</li>
             <li><strong>General:</strong> Adjust your audio interface input gain</li>
           </ul>
-        </div>
+        </div> */}
       </div>
     </div>
   );

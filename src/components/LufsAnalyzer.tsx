@@ -183,6 +183,7 @@ const LufsAnalyzer: React.FC = () => {
   return (
     <div className="lufs-analyzer">
       <div className="analyzer-header">
+        <p><h3>LUFS Audio Analyzer</h3></p>
         <div className="mode-selector">
           <button 
             className={`mode-btn ${analysisMode === 'upload' ? 'active' : ''}`}

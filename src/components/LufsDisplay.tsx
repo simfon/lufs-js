@@ -79,7 +79,7 @@ const LufsDisplay: React.FC<LufsDisplayProps> = ({ data, isAnalyzing }) => {
         </div>
       </div>
 
-      {data && (
+      {/* {data && (
         <div className="lufs-info">
           <h4>About LUFS Measurements:</h4>
           <ul>
@@ -89,7 +89,7 @@ const LufsDisplay: React.FC<LufsDisplayProps> = ({ data, isAnalyzing }) => {
             <li><strong>Loudness Range:</strong> Indicates how dynamic your audio is</li>
           </ul>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

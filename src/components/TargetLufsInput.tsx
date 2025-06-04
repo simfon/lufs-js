@@ -40,10 +40,10 @@ const TargetLufsInput: React.FC<TargetLufsInputProps> = ({ value, onChange }) =>
           max="0"
           className="lufs-input"
         />
-        <span className="unit">LUFS</span>
+        {/* <span className="unit">LUFS</span> */}
       </div>
 
-      <div className="presets-section">
+     {/*  <div className="presets-section">
         <span className="presets-label">Presets:</span>
         <div className="presets-grid">
           {presets.map((preset) => (
@@ -58,11 +58,11 @@ const TargetLufsInput: React.FC<TargetLufsInputProps> = ({ value, onChange }) =>
             </button>
           ))}
         </div>
-      </div>
+      </div> */}
 
-      <div className="target-info">
+      {/* <div className="target-info">
         <p>Set your target loudness based on your intended platform or use case.</p>
-      </div>
+      </div> */}
     </div>
   );
 };

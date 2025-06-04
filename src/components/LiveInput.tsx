@@ -246,7 +246,7 @@ const LiveInput: React.FC<LiveInputProps> = ({ onStreamReady, onStop, isAnalyzin
           </div>
         )}
 
-        <div className="live-instructions">
+        {/* <div className="live-instructions">
           <h3>Live Audio Input</h3>
           <ul>
             <li>Select your audio interface from the dropdown above (Kemper, Axe-Fx, Ampero, etc.)</li>
@@ -255,7 +255,7 @@ const LiveInput: React.FC<LiveInputProps> = ({ onStreamReady, onStop, isAnalyzin
             <li>Start live analysis and play to monitor real-time LUFS readings</li>
             <li>Adjust your device's output level based on the volume guidance</li>
           </ul>
-        </div>
+        </div> */}
       </div>
     </div>
   );
