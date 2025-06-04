@@ -1,0 +1,88 @@
+.audio-upload {
+  width: 100%;
+}
+
+.upload-area {
+  min-height: 300px;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(5px);
+}
+
+.upload-area:hover {
+  border-color: #64ffda;
+  background: rgba(100, 255, 218, 0.05);
+}
+
+.upload-area.drag-active {
+  border-color: #64ffda;
+  background: rgba(100, 255, 218, 0.1);
+  transform: scale(1.02);
+}
+
+.upload-area.analyzing {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.upload-content {
+  text-align: center;
+  padding: 2rem;
+}
+
+.upload-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+
+.upload-content p {
+  margin: 0.5rem 0;
+  color: #a0aec0;
+}
+
+.supported-formats {
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.file-name {
+  font-weight: 500;
+  color: #64ffda !important;
+  margin-top: 1rem !important;
+}
+
+.upload-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(100, 255, 218, 0.3);
+  border-top: 3px solid #64ffda;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .upload-area {
+    min-height: 200px;
+  }
+  
+  .upload-icon {
+    font-size: 3rem;
+  }
+  
+  .upload-content {
+    padding: 1rem;
+  }
+}

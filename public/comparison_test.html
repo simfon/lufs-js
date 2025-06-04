@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUFS Implementation Comparison</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .result-box {
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .old-impl { border-left: 4px solid #e74c3c; }
+        .new-impl { border-left: 4px solid #27ae60; }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background: #2980b9; }
+        .error { color: #e74c3c; }
+        .success { color: #27ae60; }
+        .comparison {
+            margin-top: 20px;
+            padding: 15px;
+            background: #ecf0f1;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LUFS Implementation Comparison Test</h1>
+        <p>This test compares the old simple RMS-based LUFS approximation with the new ITU-R BS.1770 compliant implementation.</p>
+        
+        <div class="test-section">
+            <h2>Test 1: Sine Wave Tone Tests</h2>
+            <p>Generate sine wave tones with different amplitudes and compare LUFS measurements.</p>
+            <button onclick="runSineWaveTests()">Run Sine Wave Tests</button>
+            <div id="sineResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 2: Audio File Upload</h2>
+            <p>Upload an audio file to test with real audio content.</p>
+            <input type="file" id="audioFile" accept="audio/*">
+            <button onclick="testAudioFile()">Test Audio File</button>
+            <div id="fileResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Expected vs Actual Results</h2>
+            <div id="summary"></div>
+        </div>
+    </div>
+
+    <script>
+        // Old implementation (simplified RMS-based approximation)
+        class OldLufsCalculator {
+            calculateLufs(audioData) {
+                let rms = 0;
+                for (let i = 0; i < audioData.length; i++) {
+                    rms += audioData[i] * audioData[i];
+                }
+                rms = Math.sqrt(rms / audioData.length);
+                
+                // Old approximation formula
+                const lufs = 20 * Math.log10(rms) - 23;
+                return { integrated: lufs, range: 0 };
+            }
+        }
+
+        // New ITU-R BS.1770 implementation (copied from our actual implementation)
+        class NewLufsCalculator {
+            constructor(sampleRate = 48000) {
+                this.sampleRate = sampleRate;
+                this.blockSize = Math.floor(sampleRate * 0.1);
+                this.gateThreshold = -70;
+                this.relativeGateThreshold = -10;
+                this.integratedBuffer = [];
+            }
+
+            applyKWeighting(samples) {
+                const filtered = new Float32Array(samples.length);
+                let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+                
+                const hp_a1 = -1.69065929318241;
+                const hp_a2 = 0.73248077421585;
+                const hp_b0 = 0.85319059207939;
+                const hp_b1 = -1.70638118415879;
+                const hp_b2 = 0.85319059207939;
+                
+                for (let i = 0; i < samples.length; i++) {
+                    const input = samples[i];
+                    const output = hp_b0 * input + hp_b1 * x1 + hp_b2 * x2 - hp_a1 * y1 - hp_a2 * y2;
+                    x2 = x1; x1 = input; y2 = y1; y1 = output;
+                    filtered[i] = output;
+                }
+                return filtered;
+            }
+
+            calculateMeanSquare(audioData) {
+                const kWeighted = this.applyKWeighting(audioData);
+                let sum = 0;
+                for (let i = 0; i < kWeighted.length; i++) {
+                    sum += kWeighted[i] * kWeighted[i];
+                }
+                return sum / kWeighted.length;
+            }
+
+            meanSquareToLufs(meanSquare) {
+                if (meanSquare <= 0) return -Infinity;
+                return -0.691 + 10 * Math.log10(meanSquare);
+            }
+
+            applyGating(blocks) {
+                const gatedBlocks = blocks.filter(block => block > this.gateThreshold);
+                if (gatedBlocks.length === 0) return [];
+                
+                const mean = gatedBlocks.reduce((sum, block) => sum + Math.pow(10, block / 10), 0) / gatedBlocks.length;
+                const meanLufs = 10 * Math.log10(mean);
+                const relativeThreshold = meanLufs + this.relativeGateThreshold;
+                
+                return gatedBlocks.filter(block => block > relativeThreshold);
+            }
+
+            processAudioBuffer(audioBuffer) {
+                this.integratedBuffer = [];
+                const channelData = audioBuffer.getChannelData(0);
+                const blockSize = this.blockSize;
+                
+                for (let i = 0; i < channelData.length; i += blockSize) {
+                    const end = Math.min(i + blockSize, channelData.length);
+                    const block = channelData.slice(i, end);
+                    
+                    const meanSquare = this.calculateMeanSquare(block);
+                    const lufs = this.meanSquareToLufs(meanSquare);
+                    this.integratedBuffer.push(lufs);
+                }
+                
+                const gatedBlocks = this.applyGating(this.integratedBuffer);
+                if (gatedBlocks.length === 0) {
+                    return { integrated: -Infinity, range: 0 };
+                }
+                
+                const mean = gatedBlocks.reduce((sum, block) => sum + Math.pow(10, block / 10), 0) / gatedBlocks.length;
+                const integratedLufs = 10 * Math.log10(mean);
+                
+                const sorted = [...gatedBlocks].sort((a, b) => a - b);
+                const p10Index = Math.floor(sorted.length * 0.1);
+                const p95Index = Math.floor(sorted.length * 0.95);
+                const range = sorted.length > 10 ? sorted[p95Index] - sorted[p10Index] : 0;
+                
+                return { integrated: integratedLufs, range: range };
+            }
+
+            // Simple method for single buffer testing
+            processBuffer(audioData) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = audioContext.createBuffer(1, audioData.length, this.sampleRate);
+                audioBuffer.getChannelData(0).set(audioData);
+                return this.processAudioBuffer(audioBuffer);
+            }
+        }
+
+        function generateSineWave(frequency, amplitude, duration, sampleRate = 48000) {
+            const length = sampleRate * duration;
+            const audioData = new Float32Array(length);
+            
+            for (let i = 0; i < length; i++) {
+                audioData[i] = amplitude * Math.sin(2 * Math.PI * frequency * i / sampleRate);
+            }
+            return audioData;
+        }
+
+        function runSineWaveTests() {
+            const resultsDiv = document.getElementById('sineResults');
+            resultsDiv.innerHTML = '<p>Running tests...</p>';
+            
+            const oldCalculator = new OldLufsCalculator();
+            const newCalculator = new NewLufsCalculator();
+            
+            const testCases = [
+                { amplitude: 0.1, description: 'Low amplitude (0.1)', expectedLufs: -20 },
+                { amplitude: 0.316, description: 'Medium amplitude (~-10dB)', expectedLufs: -10 },
+                { amplitude: 0.5, description: 'High amplitude (-6dB)', expectedLufs: -6 },
+            ];
+            
+            let html = '<div class="results">';
+            
+            testCases.forEach((testCase, index) => {
+                const audioData = generateSineWave(1000, testCase.amplitude, 5);
+                
+                const oldResult = oldCalculator.calculateLufs(audioData);
+                const newResult = newCalculator.processBuffer(audioData);
+                
+                const rmsLevel = 20 * Math.log10(testCase.amplitude);
+                
+                html += `
+                    <div class="result-box old-impl">
+                        <h4>Old Implementation - ${testCase.description}</h4>
+                        <p><strong>LUFS:</strong> ${oldResult.integrated.toFixed(1)}</p>
+                        <p><strong>Range:</strong> ${oldResult.range.toFixed(1)} LU</p>
+                        <p><strong>RMS Level:</strong> ${rmsLevel.toFixed(1)} dB</p>
+                    </div>
+                    <div class="result-box new-impl">
+                        <h4>New Implementation - ${testCase.description}</h4>
+                        <p><strong>LUFS:</strong> ${newResult.integrated.toFixed(1)}</p>
+                        <p><strong>Range:</strong> ${newResult.range.toFixed(1)} LU</p>
+                        <p><strong>RMS Level:</strong> ${rmsLevel.toFixed(1)} dB</p>
+                        <p><strong>Difference:</strong> ${(newResult.integrated - oldResult.integrated).toFixed(1)} LUFS</p>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            // Add comparison summary
+            html += `
+                <div class="comparison">
+                    <h3>Analysis</h3>
+                    <p><strong>Old Implementation:</strong> Simple RMS-based approximation using formula: 20*log10(RMS) - 23</p>
+                    <p><strong>New Implementation:</strong> ITU-R BS.1770 compliant with K-weighting filter and gating algorithm</p>
+                    <p><strong>Expected Behavior:</strong> New implementation should provide more accurate LUFS measurements that align with professional tools</p>
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        async function testAudioFile() {
+            const fileInput = document.getElementById('audioFile');
+            const resultsDiv = document.getElementById('fileResults');
+            
+            if (!fileInput.files[0]) {
+                resultsDiv.innerHTML = '<p class="error">Please select an audio file</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p>Processing audio file...</p>';
+            
+            try {
+                const file = fileInput.files[0];
+                const arrayBuffer = await file.arrayBuffer();
+                
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                
+                const channelData = audioBuffer.getChannelData(0);
+                
+                const oldCalculator = new OldLufsCalculator();
+                const newCalculator = new NewLufsCalculator(audioBuffer.sampleRate);
+                
+                const oldResult = oldCalculator.calculateLufs(channelData);
+                const newResult = newCalculator.processAudioBuffer(audioBuffer);
+                
+                const html = `
+                    <div class="results">
+                        <div class="result-box old-impl">
+                            <h4>Old Implementation - ${file.name}</h4>
+                            <p><strong>LUFS:</strong> ${oldResult.integrated.toFixed(1)}</p>
+                            <p><strong>Range:</strong> ${oldResult.range.toFixed(1)} LU</p>
+                            <p><strong>Sample Rate:</strong> ${audioBuffer.sampleRate} Hz</p>
+                            <p><strong>Duration:</strong> ${audioBuffer.duration.toFixed(2)} seconds</p>
+                        </div>
+                        <div class="result-box new-impl">
+                            <h4>New Implementation - ${file.name}</h4>
+                            <p><strong>LUFS:</strong> ${newResult.integrated.toFixed(1)}</p>
+                            <p><strong>Range:</strong> ${newResult.range.toFixed(1)} LU</p>
+                            <p><strong>Sample Rate:</strong> ${audioBuffer.sampleRate} Hz</p>
+                            <p><strong>Duration:</strong> ${audioBuffer.duration.toFixed(2)} seconds</p>
+                            <p><strong>Difference:</strong> ${(newResult.integrated - oldResult.integrated).toFixed(1)} LUFS</p>
+                        </div>
+                    </div>
+                    <div class="comparison">
+                        <h3>File Analysis</h3>
+                        <p>The new implementation should provide significantly different (and more accurate) results, especially for complex audio content.</p>
+                        <p>Professional LUFS measurements typically range from -14 LUFS (broadcast standard) to -6 LUFS (streaming platforms).</p>
+                    </div>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error processing file: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

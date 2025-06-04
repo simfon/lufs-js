@@ -1,0 +1,129 @@
+.target-lufs-input {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.input-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.input-section label {
+  color: #a0aec0;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.lufs-input {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  font-size: 1rem;
+  width: 80px;
+  text-align: center;
+}
+
+.lufs-input:focus {
+  outline: none;
+  border-color: #64ffda;
+  background: rgba(100, 255, 218, 0.1);
+}
+
+.unit {
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.presets-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.presets-label {
+  color: #a0aec0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.presets-grid {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.preset-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 70px;
+}
+
+.preset-btn:hover {
+  border-color: #64ffda;
+  background: rgba(100, 255, 218, 0.1);
+}
+
+.preset-btn.active {
+  border-color: #64ffda;
+  background: rgba(100, 255, 218, 0.2);
+  color: #64ffda;
+}
+
+.preset-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 0.2rem;
+}
+
+.preset-value {
+  font-size: 0.9rem;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+}
+
+.target-info {
+  margin-top: 0.5rem;
+}
+
+.target-info p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #718096;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .input-section {
+    justify-content: center;
+  }
+  
+  .presets-grid {
+    justify-content: center;
+  }
+  
+  .preset-btn {
+    min-width: 60px;
+    padding: 0.4rem 0.6rem;
+  }
+  
+  .preset-label {
+    font-size: 0.7rem;
+  }
+  
+  .preset-value {
+    font-size: 0.8rem;
+  }
+}

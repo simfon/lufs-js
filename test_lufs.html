@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUFS Test</title>
+</head>
+<body>
+    <h1>LUFS Implementation Test</h1>
+    <button id="generateTest">Generate Test Tone and Measure LUFS</button>
+    <div id="results"></div>
+
+    <script>
+        // Copy the exact LufsCalculator from our implementation
+        class LufsCalculator {
+            constructor(sampleRate = 48000) {
+                this.sampleRate = sampleRate;
+                this.blockSize = Math.floor(sampleRate * 0.1); // 0.1 second blocks
+                this.gateThreshold = -70; // Absolute gate threshold
+                this.relativeGateThreshold = -10; // Relative gate threshold
+                
+                // Buffers for different time windows
+                this.momentaryBuffer = []; // 400ms
+                this.shortTermBuffer = []; // 3s
+                this.integratedBuffer = []; // Full duration
+                
+                this.momentaryLength = Math.floor(4.8 / 0.1); // 4.8 seconds
+                this.shortTermLength = Math.floor(3.0 / 0.1); // 3 seconds
+            }
+
+            /**
+             * Apply K-weighting filter (ITU-R BS.1770-4 standard)
+             * This is a simplified approximation of the K-weighting filter
+             */
+            applyKWeighting(samples) {
+                const filtered = new Float32Array(samples.length);
+                
+                // Simplified K-weighting filter coefficients for 48kHz
+                let x1 = 0, x2 = 0;
+                let y1 = 0, y2 = 0;
+                
+                // High-pass filter at ~38Hz
+                const hp_a1 = -1.69065929318241;
+                const hp_a2 = 0.73248077421585;
+                const hp_b0 = 0.85319059207939;
+                const hp_b1 = -1.70638118415879;
+                const hp_b2 = 0.85319059207939;
+                
+                for (let i = 0; i < samples.length; i++) {
+                    const input = samples[i];
+                    
+                    // High-pass filter
+                    const output = hp_b0 * input + hp_b1 * x1 + hp_b2 * x2 - hp_a1 * y1 - hp_a2 * y2;
+                    
+                    x2 = x1;
+                    x1 = input;
+                    y2 = y1;
+                    y1 = output;
+                    
+                    filtered[i] = output;
+                }
+                
+                return filtered;
+            }
+
+            /**
+             * Calculate mean square for a block of audio data with K-weighting
+             */
+            calculateMeanSquare(audioData) {
+                // Apply K-weighting filter in time domain
+                const kWeighted = this.applyKWeighting(audioData);
+                
+                let sum = 0;
+                for (let i = 0; i < kWeighted.length; i++) {
+                    sum += kWeighted[i] * kWeighted[i];
+                }
+                
+                return sum / kWeighted.length;
+            }
+
+            /**
+             * Convert mean square to LUFS
+             */
+            meanSquareToLufs(meanSquare) {
+                if (meanSquare <= 0) return -Infinity;
+                return -0.691 + 10 * Math.log10(meanSquare);
+            }
+
+            /**
+             * Apply gating algorithm
+             */
+            applyGating(blocks) {
+                // First pass: Remove blocks below absolute gate
+                const gatedBlocks = blocks.filter(block => block > this.gateThreshold);
+                
+                if (gatedBlocks.length === 0) return [];
+                
+                // Calculate mean of gated blocks
+                const mean = gatedBlocks.reduce((sum, block) => sum + Math.pow(10, block / 10), 0) / gatedBlocks.length;
+                const meanLufs = 10 * Math.log10(mean);
+                
+                // Second pass: Remove blocks below relative gate
+                const relativeThreshold = meanLufs + this.relativeGateThreshold;
+                return gatedBlocks.filter(block => block > relativeThreshold);
+            }
+
+            /**
+             * Process entire audio buffer for file analysis
+             */
+            processAudioBuffer(audioBuffer) {
+                this.momentaryBuffer = [];
+                this.shortTermBuffer = [];
+                this.integratedBuffer = [];
+                
+                // Get channel data (mono or average of stereo)
+                const channelData = audioBuffer.getChannelData(0);
+                const blockSize = this.blockSize;
+                
+                // Process in blocks
+                for (let i = 0; i < channelData.length; i += blockSize) {
+                    const end = Math.min(i + blockSize, channelData.length);
+                    const block = channelData.slice(i, end);
+                    
+                    const meanSquare = this.calculateMeanSquare(block);
+                    const lufs = this.meanSquareToLufs(meanSquare);
+                    
+                    // Add to integrated buffer
+                    this.integratedBuffer.push(lufs);
+                }
+                
+                // Calculate final measurements
+                const gatedBlocks = this.applyGating(this.integratedBuffer);
+                if (gatedBlocks.length === 0) {
+                    return { integrated: -Infinity, range: 0 };
+                }
+                
+                const mean = gatedBlocks.reduce((sum, block) => sum + Math.pow(10, block / 10), 0) / gatedBlocks.length;
+                const integratedLufs = 10 * Math.log10(mean);
+                
+                // Calculate loudness range (LRA)
+                const sorted = [...gatedBlocks].sort((a, b) => a - b);
+                const p10Index = Math.floor(sorted.length * 0.1);
+                const p95Index = Math.floor(sorted.length * 0.95);
+                const range = sorted.length > 10 ? sorted[p95Index] - sorted[p10Index] : 0;
+                
+                return {
+                    integrated: integratedLufs,
+                    range: range,
+                    momentary: integratedLufs, // Simplified for test
+                    shortTerm: integratedLufs // Simplified for test
+                };
+            }
+        }
+
+        // Generate test tone
+        function generateTestTone(audioContext, frequency = 1000, amplitude = 0.5, duration = 2) {
+            const sampleRate = audioContext.sampleRate;
+            const length = sampleRate * duration;
+            const audioBuffer = audioContext.createBuffer(1, length, sampleRate);
+            const channelData = audioBuffer.getChannelData(0);
+
+            for (let i = 0; i < length; i++) {
+                channelData[i] = amplitude * Math.sin(2 * Math.PI * frequency * i / sampleRate);
+            }
+
+            return audioBuffer;
+        }
+
+        document.getElementById('generateTest').addEventListener('click', async () => {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Generating test tone and calculating LUFS...</p>';
+
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const lufsCalculator = new LufsCalculator(audioContext.sampleRate);
+
+                // Test with different amplitudes
+                const testCases = [
+                    { amplitude: 0.1, description: 'Low amplitude (0.1)' },
+                    { amplitude: 0.316, description: 'Medium amplitude (0.316)' },
+                    { amplitude: 0.5, description: 'High amplitude (0.5)' },
+                ];
+
+                let results = '<h2>LUFS Test Results:</h2>';
+
+                for (const testCase of testCases) {
+                    const audioBuffer = generateTestTone(audioContext, 1000, testCase.amplitude, 5);
+                    const measurement = lufsCalculator.processAudioBuffer(audioBuffer);
+                    
+                    results += `
+                        <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ccc;">
+                            <h3>${testCase.description}</h3>
+                            <p><strong>Integrated LUFS:</strong> ${measurement.integrated.toFixed(1)} LUFS</p>
+                            <p><strong>Loudness Range:</strong> ${measurement.range.toFixed(1)} LU</p>
+                            <p><strong>RMS Level:</strong> ${(20 * Math.log10(testCase.amplitude)).toFixed(1)} dB</p>
+                        </div>
+                    `;
+                }
+
+                resultsDiv.innerHTML = results;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
